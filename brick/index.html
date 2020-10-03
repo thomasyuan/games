@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game One</title>
+    <style media="screen">
+        canvas {
+            border: 2px black solid;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="id-canvas" width="800" height="400"> </canvas>
+</body>
+<script>
+    let log = console.log.bind(console)
+
+
+    class PaintAbleObject {
+        constructor(canvas, imagePath) {
+            this.canvas = canvas
+            this.context = canvas.getContext('2d')
+            this.image = this.#loadImage(imagePath)
+        }
+
+        #loadImage(path) {
+            let image = new Image()
+            image.src = path
+            image.onload = () => {
+                this.initPosition()
+                this.draw()
+            }
+
+            return image
+        }
+
+        initPosition() {
+            this.x = 0
+            this.y = 0
+        }
+
+        erase() {
+            this.context.clearRect(this.x, this.y, this.image.width, this.image.height)
+        }
+
+        draw() {
+            this.context.drawImage(this.image, this.x, this.y)
+        }
+    }
+
+    class Ball extends PaintAbleObject {
+        constructor(canvas, imagePath) {
+            super(canvas, imagePath)
+            this.speedX = 1
+            this.speedY = 4
+        }
+
+        update() {
+            if (this.y > this.canvas.height) {
+                return false
+            }
+
+            if (this.x + this.speedX + this.image.width > this.canvas.width
+                    || this.x + this.speedX < 0) {
+                this.speedX = - this.speedX
+            }
+
+            if (this.y + this.speedY < 0) {
+                this.speedY = - this.speedY
+            }
+
+            this.erase()
+            this.x += this.speedX
+            this.y += this.speedY
+            this.draw()
+
+            return true
+        }
+
+        collision(obj) {
+            if (this.y + this.image.height >= obj.y
+                    && this.y < obj.y
+                    && this.x > obj.x
+                    && this.x < obj.x + obj.image.width) {
+
+                return true
+            }
+
+            return false
+        }
+
+        change(x) {
+            if (x != 0) {
+                log("x is", x, "speedX changed from ", this.speedX, "to", x - this.speedX)
+                this.speedX =  x - this.speedX
+            }
+            this.speedY = - this.speedY
+        }
+
+        reset() {
+            this.initPosition()
+            this.speedX = 1
+            this.speedY = 4
+        }
+
+        initPosition() {
+            this.x = this.canvas.width / 2
+            this.y = this.canvas.height / 2
+        }
+    }
+
+    class Paddle extends PaintAbleObject {
+        constructor(canvas, imagePath) {
+            super(canvas, imagePath)
+            this.speed = 2
+        }
+
+        reset() {
+            this.initPosition()
+            this.draw()
+        }
+
+        update(move) {
+            if (this.x + move + this.image.width > this.canvas.width
+                    || this.x + move < 0
+                    || move == 0) {
+                return
+            }
+
+            this.erase()
+            this.x += move
+            this.draw()
+        }
+
+        initPosition() {
+            this.x = (this.canvas.width / 2) - (this.image.width / 2)
+            this.y = this.canvas.height * 0.8
+        }
+    }
+
+    class Game {
+        constructor() {
+            this.canvas = document.querySelector('#id-canvas')
+            this.context = this.canvas.getContext('2d')
+            this.paddle = new Paddle(this.canvas, "bar.jpg")
+            this.ball = new Ball(this.canvas, "ball.png")
+            this.speed = 4
+            this.move = 0
+        }
+
+        #registerKeyboardListener() {
+            window.addEventListener('keydown', event => {
+                const k = event.key
+                if (k == 'a' || k == 'ArrowLeft') {
+                    this.move = -this.speed
+                } else if (k == 'd' || k == 'ArrowRight') {
+                    this.move = this.speed
+                } else if (k == ' ') {
+                    this.#restart()
+                }
+            })
+
+            window.addEventListener('keyup', event => {
+                this.move = 0
+            })
+        }
+
+        #restart() {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
+            clearInterval(this.interval)
+            this.ball.reset()
+            this.paddle.reset()
+            this.#runLoop()
+        }
+
+        #gameOver() {
+            this.paddle.erase()
+            this.context.font = "64px Georgia"
+            this.context.fillText("Game Over!", 220, 200)
+            this.context.fillText("Press Space to Restart", 80, 300)
+            clearInterval(this.interval)
+        }
+
+        #runLoop() {
+            this.interval = setInterval(() => {
+                let ok = this.ball.update()
+                if (!ok) {
+                    this.#gameOver()
+                    return
+                }
+
+                if (this.ball.collision(this.paddle)) {
+                    this.ball.change(Math.sign(this.move))
+                }
+
+                this.paddle.update(this.move)
+            }, 10)
+        }
+
+        start() {
+            this.#registerKeyboardListener()
+            this.#runLoop()
+        }
+    }
+
+    function __main__() {
+        let game = new Game()
+        game.start()
+    }
+
+    __main__()
+</script>
+
+</html>
